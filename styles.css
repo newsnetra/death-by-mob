@@ -1170,7 +1170,7 @@ section[aria-label="Story"] {
 
   .hero-copy h1 {
     max-width: 13ch;
-    font-size: clamp(2rem, 8.8vw, 3.1rem);
+    font-size: clamp(2.1rem, 9.2vw, 3.2rem);
     line-height: 0.95;
     margin-left: auto;
     margin-right: auto;
@@ -1178,7 +1178,7 @@ section[aria-label="Story"] {
 
   .deck {
     max-width: 30ch;
-    font-size: clamp(1rem, 4.2vw, 1.22rem);
+    font-size: clamp(1.05rem, 4.4vw, 1.28rem);
     line-height: 1.34;
     margin-left: auto;
     margin-right: auto;
@@ -1186,8 +1186,26 @@ section[aria-label="Story"] {
 
   .byline {
     margin-top: 0;
-    font-size: clamp(0.78rem, 3vw, 0.9rem);
+    font-size: clamp(0.84rem, 3.2vw, 0.96rem);
     justify-content: center;
+  }
+
+  .text-block p {
+    font-size: clamp(1.1rem, 3.8vw, 1.27rem);
+    line-height: 1.56;
+  }
+
+  #mob-table tbody td {
+    font-size: 0.9rem;
+  }
+
+  .detail-content p {
+    font-size: 0.94rem;
+  }
+
+  .methodology p,
+  .credits p {
+    font-size: clamp(0.95rem, 2.9vw, 1.02rem);
   }
 
   .social-icons {
@@ -1223,6 +1241,36 @@ section[aria-label="Story"] {
   .list {
     min-width: 0;
     text-align: left;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(2.18rem, 9.8vw, 3.25rem);
+  }
+
+  .deck {
+    font-size: clamp(1.08rem, 4.9vw, 1.3rem);
+  }
+
+  .byline {
+    font-size: clamp(0.88rem, 3.8vw, 0.98rem);
+  }
+
+  .text-block p {
+    font-size: clamp(1.12rem, 5vw, 1.3rem);
+    line-height: 1.58;
+  }
+
+  .methodology p,
+  .credits p {
+    font-size: clamp(0.98rem, 3.8vw, 1.08rem);
+  }
+
+  .list h3 {
+    font-size: 0.8rem;
+  }
+
+  .list ul li a {
+    font-size: 0.92rem;
   }
 
   .list:nth-child(3) {
