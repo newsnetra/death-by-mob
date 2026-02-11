@@ -479,7 +479,11 @@ section[aria-label="Story"] {
 }
 
 .table-wrap {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 #mob-table {
@@ -851,7 +855,7 @@ section[aria-label="Story"] {
 }
 
 .methodology h2 {
-  margin: 0 0 0.75rem;
+  margin: 0.75rem 0;
   font: 700 clamp(0.78rem, 0.95vw, 0.9rem) / 1 var(--font-data);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -891,6 +895,8 @@ footer {
 }
 
 #footer-inner {
+  width: min(100%, 618px);
+  min-width: 0;
   max-width: 618px;
   margin: 0 auto;
 }
@@ -925,6 +931,7 @@ footer {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
+  gap: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
   padding-top: 30px;
   margin-top: 30px;
@@ -937,6 +944,7 @@ footer {
 .list {
   flex: 1;
   min-width: 200px;
+  max-width: 100%;
   text-align: center;
 
 }
@@ -1048,7 +1056,7 @@ footer {
     max-width: none;
   }
 
-  .text-block p, .methodology, .viz-section, .credits {
+  .text-block p, .methodology, .viz-section, .credits, .district-map-wrap h3, .district-map-legend {
     padding: 0 1rem;
   }
 
@@ -1133,7 +1141,8 @@ footer {
     margin: 0;
     padding: 0;
     gap: clamp(0.75rem, 2.2vh, 1.25rem);
-    width: min(92vw, 34rem);
+    width: min(100%, 34rem);
+    min-width: 0;
   }
 
   .hero-copy h1 {
@@ -1162,6 +1171,35 @@ footer {
     margin-top: 0;
     justify-content: center;
     align-items: center;
+  }
+}
+
+@media (max-width: 540px) {
+  .table-section {
+    padding: 0.8rem 0.75rem;
+    overflow: hidden;
+  }
+
+  footer {
+    padding: 1.5rem 1rem;
+  }
+
+  #footer-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .lists {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+    padding-top: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  .list {
+    min-width: 0;
+    text-align: left;
   }
 }
 
