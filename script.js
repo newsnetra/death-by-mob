@@ -6,8 +6,28 @@
     "./mob_violence_cleaned.csv",
     "./mob_violence_cleaned"
   ];
+  const DISTRICT_GEOJSON_CANDIDATES = [
+    "bangladesh-districts.json",
+    "./bangladesh-districts.json",
+    "bangladesh-districts.geojson",
+    "./bangladesh-districts.geojson"
+  ];
+  const DISTRICT_ALIASES = {
+    chittagong: "chattogram",
+    comilla: "cumilla",
+    barisal: "barishal",
+    jessore: "jashore",
+    bogra: "bogura",
+    coxsbazar: "coxsbazar",
+    coxbazar: "coxsbazar",
+    bagerhat: "bagerhat",
+    brahmanbaria: "brahmanbaria",
+    nator: "natore",
+    gaibanda: "gaibandha"
+  };
 
   const REQUIRED_COLUMNS = [
+    "district",
     "date",
     "name",
     "age",
@@ -15,7 +35,8 @@
     "cause_of_death",
     "source_url_1",
     "source_url_2",
-    "year_sheet"
+    "year_sheet",
+    "spontaneous_mob"
   ];
 
   let rows = [];
@@ -28,6 +49,22 @@
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
+  }
+
+  function normalizeDistrictName(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z]/g, "");
+  }
+
+  function canonicalDistrict(value) {
+    const normalized = normalizeDistrictName(value);
+    if (!normalized) {
+      return "";
+    }
+    return DISTRICT_ALIASES[normalized] || normalized;
   }
 
   function escapeHtml(value) {
@@ -121,6 +158,7 @@
         obj[header] = String(cells[idx] || "").trim();
       });
       return {
+        district: obj.district,
         date: obj.date,
         name: obj.name,
         age: obj.age,
@@ -129,7 +167,10 @@
         news_brief: obj.news_brief || obj.new_brief || "",
         source_url_1: obj.source_url_1,
         source_url_2: obj.source_url_2,
-        year_sheet: obj.year_sheet
+        year_sheet: obj.year_sheet,
+        spontaneous_mob: obj.spontaneous_mob,
+        spontaneous_yes: /^yes$/i.test(String(obj.spontaneous_mob || "").trim()),
+        spontaneous_no: /^no$/i.test(String(obj.spontaneous_mob || "").trim())
       };
     });
   }
@@ -165,6 +206,200 @@
   function getFilteredRows() {
     if (activeYear === "all") return rows;
     return rows.filter((r) => String(r.year_sheet || "").trim() === activeYear);
+  }
+
+  function getRowsByYear(year) {
+    return rows.filter((r) => String(r.year_sheet || "").trim() === String(year));
+  }
+
+  function getFeatureDistrictName(properties) {
+    const props = properties || {};
+    const explicitKeys = [
+      "district",
+      "DISTRICT",
+      "District",
+      "district_name",
+      "DIST_NAME",
+      "name",
+      "NAME_2",
+      "NAME_1",
+      "ADM2_EN",
+      "adm2_en",
+      "shapeName",
+      "zila",
+      "ZILA"
+    ];
+
+    for (const key of explicitKeys) {
+      if (props[key]) {
+        return String(props[key]);
+      }
+    }
+
+    const districtLike = Object.keys(props).find((key) => /dist|zila/i.test(key) && props[key]);
+    if (districtLike) {
+      return String(props[districtLike]);
+    }
+
+    const nameLike = Object.keys(props).find((key) => /name/i.test(key) && props[key]);
+    if (nameLike) {
+      return String(props[nameLike]);
+    }
+
+    return "";
+  }
+
+  async function loadDistrictGeoJson() {
+    for (const url of DISTRICT_GEOJSON_CANDIDATES) {
+      try {
+        const response = await fetch(url, { cache: "force-cache" });
+        if (!response.ok) {
+          continue;
+        }
+        const json = await response.json();
+        if (!json || !Array.isArray(json.features) || !json.features.length) {
+          continue;
+        }
+
+        const hasPolygon = json.features.some((f) => f && f.geometry && /Polygon/i.test(String(f.geometry.type || "")));
+        if (hasPolygon) {
+          return json;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    throw new Error("Could not load Bangladesh district polygon GeoJSON");
+  }
+
+  function renderDistrictMapError(message) {
+    const container = document.getElementById("district-map");
+    if (!container) {
+      return;
+    }
+    container.innerHTML = "";
+    const el = document.createElement("p");
+    el.className = "district-map-error";
+    el.textContent = message;
+    container.appendChild(el);
+  }
+
+  async function renderDistrictMap() {
+    const containerNode = document.getElementById("district-map");
+    if (!containerNode) {
+      return;
+    }
+    if (!window.d3) {
+      renderDistrictMapError("Map library is unavailable.");
+      return;
+    }
+
+    const d3Ref = window.d3;
+    const root = d3Ref.select(containerNode);
+    root.selectAll("*").remove();
+
+    let geoJson;
+    try {
+      geoJson = await loadDistrictGeoJson();
+    } catch (error) {
+      renderDistrictMapError("District map could not be loaded in this environment.");
+      return;
+    }
+
+    const polygonFeatures = (geoJson.features || []).filter((f) => {
+      if (!f || !f.geometry || !f.geometry.type) {
+        return false;
+      }
+      return /Polygon/i.test(f.geometry.type);
+    });
+
+    if (!polygonFeatures.length) {
+      renderDistrictMapError("District polygon boundaries were not found in the map file.");
+      return;
+    }
+    const features = polygonFeatures;
+
+    const rows2025 = rows.filter((row) => String(row.year_sheet || "").trim() === "2025");
+    const countsByDistrict = new Map();
+    rows2025.forEach((row) => {
+      const key = canonicalDistrict(row.district);
+      if (!key) {
+        return;
+      }
+      countsByDistrict.set(key, (countsByDistrict.get(key) || 0) + 1);
+    });
+
+    features.forEach((feature) => {
+      const districtName = getFeatureDistrictName(feature.properties);
+      const districtKey = canonicalDistrict(districtName);
+      feature.__districtName = districtName || "Unknown";
+      feature.__districtKey = districtKey;
+      feature.__count = countsByDistrict.get(districtKey) || 0;
+    });
+
+    const measuredWidth = containerNode.clientWidth || 760;
+    const width = Math.max(340, measuredWidth);
+    const height = Math.round(width * 0.9);
+    const mapCollection = { type: "FeatureCollection", features };
+    const projection = d3Ref.geoMercator().fitSize([width, height], mapCollection);
+    const path = d3Ref.geoPath(projection);
+
+    const ramp = ["#ecebe7", "#dcd9d2", "#cac6bf", "#b2ada5", "#948f86", "#6d6961", "#222222"];
+    const choropleth = d3Ref.scaleQuantize().domain([1, 19]).range(ramp);
+    const noDataFill = "#f1f1ee";
+
+    function fillByCount(count) {
+      if (!count || count < 1) {
+        return noDataFill;
+      }
+      return choropleth(Math.min(19, count));
+    }
+
+    const svg = root
+      .append("svg")
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("aria-hidden", "true");
+
+    const tooltip = root.append("div").attr("class", "district-tooltip");
+
+    function showTooltip(text, x, y) {
+      tooltip
+        .style("left", `${x}px`)
+        .style("top", `${y}px`)
+        .style("opacity", 1)
+        .text(text);
+    }
+
+    function hideTooltip() {
+      tooltip.style("opacity", 0);
+    }
+
+    svg
+      .append("g")
+      .selectAll("path")
+      .data(features)
+      .join("path")
+      .attr("class", "district-region")
+      .attr("d", path)
+      .attr("fill", (d) => fillByCount(d.__count))
+      .attr("tabindex", 0)
+      .attr("aria-label", (d) => `${d.__districtName}: ${d.__count} case${d.__count === 1 ? "" : "s"}`)
+      .on("mouseenter", function onMouseEnter(event, d) {
+        const [x, y] = d3Ref.pointer(event, containerNode);
+        showTooltip(`${d.__districtName}: ${d.__count}`, x, y);
+      })
+      .on("mousemove", function onMouseMove(event, d) {
+        const [x, y] = d3Ref.pointer(event, containerNode);
+        showTooltip(`${d.__districtName}: ${d.__count}`, x, y);
+      })
+      .on("mouseleave", hideTooltip)
+      .on("focus", function onFocus(event, d) {
+        const centroid = path.centroid(d);
+        const cx = Number.isFinite(centroid[0]) ? centroid[0] : width * 0.5;
+        const cy = Number.isFinite(centroid[1]) ? centroid[1] : height * 0.5;
+        showTooltip(`${d.__districtName}: ${d.__count}`, cx, cy);
+      })
+      .on("blur", hideTooltip);
   }
 
   function renderTablePage() {
@@ -326,16 +561,43 @@
     });
   }
 
-    function renderCircleGrid() {
-    const baseline = 38;
-    const total = 139;
+  function updateVizSummary(count2023, count2025) {
+    const deaths2023 = `${count2023} Death${count2023 === 1 ? "" : "s"}`;
+    const deaths2025 = `${count2025} Death${count2025 === 1 ? "" : "s"}`;
+    $("#viz-count-2023").text(deaths2023);
+    $("#viz-count-2025").text(deaths2025);
+    $("#circle-grid").attr("aria-label", `${count2023} deaths in 2023 and ${count2025} deaths in 2025`);
+  }
+
+  function renderCircleGrid() {
     const $grid = $("#circle-grid");
     $grid.empty();
+    const rows2023 = getRowsByYear("2023");
+    const rows2025 = getRowsByYear("2025");
 
-    for (let i = 0; i < total; i += 1) {
-      const cls = i < baseline ? "baseline" : "increase";
-      $grid.append(`<span class="circle ${cls}" aria-hidden="true"></span>`);
-    }
+    rows2023.forEach((item) => {
+      const personName = item.name || "Unknown";
+      const safeName = escapeHtml(personName);
+      const marker = item.spontaneous_no ? '<span class="circle-mark" aria-hidden="true"></span>' : "";
+      const spontaneousClass = item.spontaneous_no ? " spontaneous-no" : "";
+      const spontaneousLabel = item.spontaneous_no ? "No" : (item.spontaneous_yes ? "Yes" : "Unavailable");
+      $grid.append(
+        `<span class="circle baseline${spontaneousClass}" data-name="${safeName}" data-year="2023" title="${safeName}" tabindex="0" aria-label="${safeName}, 2023, spontaneous mob: ${spontaneousLabel}">${marker}</span>`
+      );
+    });
+
+    rows2025.forEach((item) => {
+      const personName = item.name || "Unknown";
+      const safeName = escapeHtml(personName);
+      const marker = item.spontaneous_no ? '<span class="circle-mark" aria-hidden="true"></span>' : "";
+      const spontaneousClass = item.spontaneous_no ? " spontaneous-no" : "";
+      const spontaneousLabel = item.spontaneous_no ? "No" : (item.spontaneous_yes ? "Yes" : "Unavailable");
+      $grid.append(
+        `<span class="circle increase${spontaneousClass}" data-name="${safeName}" data-year="2025" title="${safeName}" tabindex="0" aria-label="${safeName}, 2025, spontaneous mob: ${spontaneousLabel}">${marker}</span>`
+      );
+    });
+
+    updateVizSummary(rows2023.length, rows2025.length);
   }
 
   async function initTable() {
@@ -343,12 +605,16 @@
       const csvText = await loadCsvText();
       rows = mapRows(csvText);
       currentPage = 1;
+      await renderDistrictMap();
+      renderCircleGrid();
       renderTablePage();
       renderPagination();
     } catch (error) {
       const msg = `${error.message}. Run this from a local server and ensure mob_violence_cleaned.csv is next to index.html.`;
       $("#mob-table-body").html(`<tr class="status-row"><td colspan="6">${escapeHtml(msg)}</td></tr>`);
       $("#table-pagination").empty();
+      renderDistrictMapError("District map unavailable until CSV is loaded.");
+      renderCircleGrid();
     }
   }
 
@@ -367,9 +633,7 @@
 
   $(function init() {
     bindImageFallback();
-    renderCircleGrid();
     bindTableEvents();
     initTable();
   });
 })();
-
