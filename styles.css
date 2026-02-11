@@ -81,7 +81,7 @@ a:active {
 
 .hero-copy {
   width: 100%;
-  height: 50vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -94,7 +94,7 @@ a:active {
   position: relative;
   margin: 0;
   width: 100%;
-  height: 50vh;
+  height: 100vh;
   background: #d6d6d3;
   overflow: hidden;
 
@@ -1036,7 +1036,8 @@ footer {
   .brand-logo-link {
     position: absolute;
     top: 1rem;
-    left: 1rem;
+    left: 25%;
+    transform: translateX(-50%);
     z-index: 3;
     margin: 0;
     display: inline-block;
@@ -1116,7 +1117,8 @@ footer {
     position: absolute;
     z-index: 3;
     top: 1rem;
-    left: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
     display: inline-block;
     margin: 0;
     opacity: 1;
