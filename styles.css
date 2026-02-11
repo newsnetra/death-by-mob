@@ -23,6 +23,9 @@ html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--bg);
   color: var(--text);
 }
@@ -69,6 +72,8 @@ a:active {
   max-width: none;
   margin: 0;
   padding: 0 0 2.5rem 0;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .hero {
@@ -77,6 +82,8 @@ a:active {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0;
   align-items: start;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .hero-copy {
@@ -185,6 +192,7 @@ a:active {
 .byline {
   display: inline-flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 0.8rem;
   margin: 0;
   font: 500 clamp(0.8rem, 1vw, 0.92rem) / 1.3 var(--font-cond);
@@ -771,6 +779,14 @@ section[aria-label="Story"] {
   transform: translate(-50%, 0);
 }
 
+@media (hover: none), (pointer: coarse) {
+  .circle::after,
+  .circle::before {
+    content: none;
+    display: none;
+  }
+}
+
 .circle:focus-visible {
   outline: 2px solid var(--muted);
   outline-offset: 1px;
@@ -1035,6 +1051,12 @@ footer {
 @media (max-width: 860px) {
   .page {
     padding: 0 0 3rem;
+  }
+
+  .table-section {
+    max-width: 100%;
+    padding: 0.9rem 1rem;
+    margin: 2.2rem auto;
   }
 
   .hero {
